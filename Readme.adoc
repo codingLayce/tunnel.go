@@ -1,0 +1,17 @@
+= Tunnel-SDK
+
+Client SDK in Golang to communicate with a Tunnel server.
+
+[#_connect_to_a_tunnel_server]
+== Connect to a Tunnel server
+
+[source,Go]
+----
+    package main
+
+    import "github.com/codingLayce/tunnel.go"
+
+    func main() {
+        client, err := tunnel.Connect()
+    }
+----
