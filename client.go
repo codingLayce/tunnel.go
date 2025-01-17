@@ -55,6 +55,13 @@ func (c *Client) keepConnectedLoop() {
 				for err != nil {
 					// TODO : Backoff retry or something less brutal !
 					time.Sleep(time.Second)
+					select {
+					case <-c.stop:
+						c.connected.Store(false)
+						c.Logger.Debug("Stopped")
+						return
+					default:
+					}
 					err = c.internal.Connect()
 				}
 				c.Logger.Debug("Reconnected to Tunnel server !")

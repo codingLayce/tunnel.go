@@ -13,5 +13,9 @@ Client SDK in Golang to communicate with a Tunnel server.
 
     func main() {
         client, err := tunnel.Connect()
+		if err != nil {
+			panic(err)
+		}
+		defer client.Stop() // Don't forget for graceful shutdown
     }
 ----
