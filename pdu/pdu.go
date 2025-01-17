@@ -5,17 +5,17 @@ import (
 	"fmt"
 
 	"github.com/codingLayce/tunnel.go/id"
-	"github.com/codingLayce/tunnel.go/tcp/command"
+	"github.com/codingLayce/tunnel.go/pdu/command"
 )
 
-const PDUDelimiter byte = '\n'
+const Delimiter byte = '\n'
 
 func Marshal(cmd command.Command) []byte {
 	buf := bytes.Buffer{}
 	buf.WriteByte(cmd.Indicator())
 	buf.WriteString(cmd.TransactionID())
 	buf.Write(cmd.Data())
-	buf.WriteByte(PDUDelimiter)
+	buf.WriteByte(Delimiter)
 	return buf.Bytes()
 }
 
@@ -24,8 +24,8 @@ func Unmarshal(payload []byte) (command.Command, error) {
 		return nil, fmt.Errorf("invalid payload length: cannot be less than 10 bytes")
 	}
 
-	if payload[len(payload)-1] != PDUDelimiter {
-		return nil, fmt.Errorf("invalid payload delimiter %q, expected %q", payload[len(payload)-1], PDUDelimiter)
+	if payload[len(payload)-1] != Delimiter {
+		return nil, fmt.Errorf("invalid payload delimiter %q, expected %q", payload[len(payload)-1], Delimiter)
 	}
 
 	indicator := payload[0]

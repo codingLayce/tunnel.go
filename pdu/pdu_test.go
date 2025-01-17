@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/codingLayce/tunnel.go/tcp/command"
+	"github.com/codingLayce/tunnel.go/pdu/command"
 )
 
 type FakeCommand struct {
