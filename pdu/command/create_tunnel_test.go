@@ -95,27 +95,33 @@ func TestCreateTunnel_ID(t *testing.T) {
 func TestCreateTunnel_Data(t *testing.T) {
 	for name, tc := range map[string]struct {
 		name         string
+		tunnelType   TunnelType
 		expectedData []byte
 	}{
 		"Valid only lower cases letters": {
 			name:         "bidule",
-			expectedData: []byte("bidule"),
+			tunnelType:   BroadcastTunnel,
+			expectedData: data([]byte{0}, []byte("bidule")),
 		},
 		"Valid only upper case letters": {
 			name:         "BONJOUR",
-			expectedData: []byte("BONJOUR"),
+			tunnelType:   BroadcastTunnel,
+			expectedData: data([]byte{0}, []byte("BONJOUR")),
 		},
 		"Valid only letters": {
 			name:         "Tunnel",
-			expectedData: []byte("Tunnel"),
+			tunnelType:   BroadcastTunnel,
+			expectedData: data([]byte{0}, []byte("Tunnel")),
 		},
 		"Valid only digits": {
 			name:         "17",
-			expectedData: []byte("17"),
+			tunnelType:   BroadcastTunnel,
+			expectedData: data([]byte{0}, []byte("17")),
 		},
 		"Valid letters and digits": {
 			name:         "88My67Tunnel01",
-			expectedData: []byte("88My67Tunnel01"),
+			tunnelType:   BroadcastTunnel,
+			expectedData: data([]byte{0}, []byte("88My67Tunnel01")),
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

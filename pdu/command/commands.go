@@ -43,13 +43,4 @@ func parseAcknowledgement(transactionID string, data []byte) (Command, error) {
 	}
 }
 
-func parseCreateTunnel(transactionID string, data []byte) (Command, error) {
-	cmd := NewCreateTunnel(string(data))
-	err := cmd.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("invalid create_tunnel command: %s", err)
-	}
-	return cmd, nil
-}
-
 var newID = id.New

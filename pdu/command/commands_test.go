@@ -26,7 +26,7 @@ func TestParse(t *testing.T) {
 		},
 		"Create Tunnel": {
 			indicator:       CreateTunnelIndicator,
-			data:            []byte("Bidule17"),
+			data:            data([]byte{0}, []byte("Bidule17")),
 			expectedCommand: NewCreateTunnelWithTransactionID(transactionID, "Bidule17"),
 		},
 	} {
@@ -56,7 +56,7 @@ func TestParse_Errors(t *testing.T) {
 		"Invalid create tunnel": {
 			indicator:        CreateTunnelIndicator,
 			data:             []byte("Mon_Tunnel"),
-			expectedErrorMsg: `invalid create_tunnel command: invalid name`,
+			expectedErrorMsg: `invalid create_tunnel command: invalid type`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

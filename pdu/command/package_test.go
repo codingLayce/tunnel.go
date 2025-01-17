@@ -14,12 +14,10 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-// buildPayload creates the payload as follows: <indicator><data>
-func buildPayload(indicator byte, data ...[]byte) []byte {
+func data(args ...[]byte) []byte {
 	buf := bytes.Buffer{}
-	buf.WriteByte(indicator)
-	for _, d := range data {
-		buf.Write(d)
+	for _, arg := range args {
+		buf.Write(arg)
 	}
 	return buf.Bytes()
 }
