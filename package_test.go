@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/codingLayce/tunnel/tcp"
+	"github.com/codingLayce/tunnel.go/tcp"
 )
 
 type TestTCPClient struct {

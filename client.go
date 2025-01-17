@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/codingLayce/tunnel/tcp"
+	"github.com/codingLayce/tunnel.go/tcp"
 )
 
 type TCPClient interface {
