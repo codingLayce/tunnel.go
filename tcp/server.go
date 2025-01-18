@@ -125,6 +125,10 @@ func (s *Server) stopConnections() {
 	}
 }
 
+func (s *Server) Addr() string {
+	return s.listener.Addr().String()
+}
+
 func (s *Server) Stop() {
 	s.stopConnections()
 	s.listener.Close()
