@@ -1,0 +1,62 @@
+= Commands
+ifdef::env-name[:relfilesuffix: .adoc]
+
+Return to xref:index.adoc[index]
+
+== Acknowledgement
+
+Each command must be acknowledged with a `ack` (successful) or a `nack` (unsuccessful).
+
+To reconcile which command the acknowledgement reefers to, the `transaction_id` is used.
+
+So, a command with the `transaction_id` : `abcd1234`, when an acknowledgement is received with the same `transaction_id` it reefers to that command.
+
+=== ACK
+
+Indicates that the command with th given `transaction_id` has succeeded.
+
+* Usage : client / server
+* Indicator : `@`
+* Arguments : `OK`
+* Example : `@abcd1234OK\n`
+
+=== NACK
+
+Indicates that the command with th given `transaction_id` has failed.
+
+* Usage : client / server
+* Indicator : `@`
+* Arguments : `KO`
+* Example : `@abcd1234KO\n`
+
+== Create Tunnel
+
+Asks the server to create a Tunnel with the provided arguments.
+
+The server responds with a `ack` means that the Tunnel has been created.
+
+The server responds with a `nack` means that the Tunnel has not been created.
+
+* Usage : client
+* Indicator : `+`
+* Arguments :
+
+[cols="1,1,1,3"]
+|===
+|*Name*
+|*Size*
+|*Values*
+|*Description*
+
+|Tunnel type
+|1 byte
+|0 : Broadcast (all messages will be transferred to all Tunnel's listeners).
+|Indicates the desired type of Tunnel (see values).
+
+|Tunnel name
+|n bytes
+|
+|Name of the Tunnel to create.
+|===
+
+* Example : Asks to create a broadcast Tunnel with the name "MyTunnel" `@abcd12340MyTunnel\n`

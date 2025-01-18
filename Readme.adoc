@@ -1,9 +1,16 @@
-= Tunnel-SDK
+= Tunnel.go
+
+Is a dead simple messaging system written in Go.
+
+It's based on top of TCP with a custom protocol.
+
+See `github.com/codingLayce/tunnel-server` for a Tunnel server command tool.
+
+== Go Client
 
 Client SDK in Golang to communicate with a Tunnel server.
 
-[#_connect_to_a_tunnel_server]
-== Connect to a Tunnel server
+=== Connect to a Tunnel server
 
 [source,Go]
 ----
@@ -12,7 +19,7 @@ Client SDK in Golang to communicate with a Tunnel server.
     import "github.com/codingLayce/tunnel.go"
 
     func main() {
-        client, err := tunnel.Connect()
+        client, err := tunnel.Connect("tunnel.server.addr:19917")
 		if err != nil {
 			panic(err)
 		}

@@ -1,0 +1,16 @@
+= Payloads
+ifdef::env-name[:relfilesuffix: .adoc]
+
+Return to xref:index.adoc[index]
+
+Each payload of the protocol follows the following pattern :
+
+`<indicator><transaction_id><data>\n`
+
+.Legend
+* indicator : 1 byte
+* transaction_id : 8 bytes (used to reconcile async acknowledgement)
+* data : [0,n] bytes
+* delimiter : 1 byte
+
+A minimal payload would size 10 bytes `.abcdefgh\n`
