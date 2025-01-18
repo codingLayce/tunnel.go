@@ -9,8 +9,8 @@ import (
 var generator = rand.New(rand.NewSource(time.Now().Unix()))
 
 const (
-	validCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	nbPossibleChars = 62
+	validCharacters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	nbPossibleChars = 36
 	idLength        = 8
 )
 

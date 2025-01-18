@@ -51,9 +51,14 @@ func (cmd *CreateTunnel) Validate() error {
 	if createTunnelNameValidator.MatchString(cmd.Name) {
 		return nil
 	}
+	// TODO : Limit name size
 	return fmt.Errorf("invalid name")
 }
-func (cmd *CreateTunnel) Info() string          { return fmt.Sprintf("CREATE_TUNNEL(%s)", cmd.Name) }
+
+func (cmd *CreateTunnel) Info() string {
+	// TODO : Specify the Tunnel type
+	return fmt.Sprintf("CREATE_TUNNEL(%s)", cmd.Name)
+}
 func (cmd *CreateTunnel) TransactionID() string { return cmd.transactionID }
 func (cmd *CreateTunnel) Indicator() byte       { return CreateTunnelIndicator }
 func (cmd *CreateTunnel) Data() []byte {

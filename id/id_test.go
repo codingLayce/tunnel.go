@@ -9,7 +9,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	rex, err := regexp.Compile(`[a-zA-Z0-9]{8}`)
+	rex, err := regexp.Compile(`[a-z0-9]{8}`)
 	require.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
@@ -39,7 +39,7 @@ func TestIsValid(t *testing.T) {
 			isValid: false,
 		},
 		"Length 4": {
-			id:      "1a2B",
+			id:      "1a2b",
 			isValid: false,
 		},
 		"Length 5": {
@@ -47,23 +47,23 @@ func TestIsValid(t *testing.T) {
 			isValid: false,
 		},
 		"Length 6": {
-			id:      "1a2b3C",
+			id:      "1a2b3c",
 			isValid: false,
 		},
 		"Length 7": {
-			id:      "1A2b3c4",
+			id:      "1a2b3c4",
 			isValid: false,
 		},
 		"Length 8": {
-			id:      "1A2b3c4D",
+			id:      "1a2b3c4d",
 			isValid: true,
 		},
 		"Length 9": {
-			id:      "1A2b3c4D5",
+			id:      "1a2b3c4d5",
 			isValid: false,
 		},
 		"With space": {
-			id:      "1A2b c4D",
+			id:      "1a2b c4d",
 			isValid: false,
 		},
 		"With special character": {

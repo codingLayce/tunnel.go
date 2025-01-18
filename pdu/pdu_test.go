@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/codingLayce/tunnel.go/pdu/command"
+	"github.com/codingLayce/tunnel.go/test-helper/mock"
 )
 
 type FakeCommand struct {
@@ -32,13 +33,12 @@ func TestMarshal(t *testing.T) {
 
 func TestUnmarshal(t *testing.T) {
 	// Mocks parse command
-	parseCommand = func(indicator byte, transactionID string, data []byte) (command.Command, error) {
+	mock.Do(t, &parseCommand, func(indicator byte, transactionID string, data []byte) (command.Command, error) {
 		assert.Equal(t, byte('='), indicator)
 		assert.Equal(t, "toto1234", transactionID)
 		assert.Equal(t, []byte("MyData"), data)
 		return nil, nil
-	}
-	t.Cleanup(func() { parseCommand = command.Parse })
+	})
 
 	cmd, err := Unmarshal([]byte("=toto1234MyData\n"))
 	require.NoError(t, err)

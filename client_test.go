@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/codingLayce/tunnel.go/id"
+	"github.com/codingLayce/tunnel.go/pdu"
+	"github.com/codingLayce/tunnel.go/pdu/command"
+	"github.com/codingLayce/tunnel.go/test-helper/mock"
 )
 
 func TestConnect(t *testing.T) {
@@ -113,20 +119,6 @@ func TestClient_StoppedWhileRetryConnect(t *testing.T) {
 	}
 }
 
-func TestClient_OnPayload(t *testing.T) {
-	tcpClient := newTestTCPClient()
-	mockNewTCPClient(t, tcpClient)
-
-	// Nothing to assert yet. The log should be in the standard output.
-	assert.NotPanics(t, func() {
-		cl, err := Connect("")
-		require.NoError(t, err)
-		defer cl.Stop()
-
-		tcpClient.callOnPayload([]byte("PAYLOAD"))
-	})
-}
-
 func TestConnect_Error(t *testing.T) {
 	tcpClient := newTestTCPClient()
 	tcpClient.connect = func() error {
@@ -136,4 +128,197 @@ func TestConnect_Error(t *testing.T) {
 
 	_, err := Connect("")
 	assert.EqualError(t, err, "connect to Tunnel server: error")
+}
+
+func TestClient_CreateBTunnel(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			// send ack
+			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			tcpClient.callOnPayload(pdu.Marshal(command.NewAckWithTransactionID(cmd.TransactionID())))
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	require.NoError(t, err)
+}
+
+func TestClient_CreateBTunnel_ValidationError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	err = cl.CreateBTunnel("Un super tunnel avec un mauvais _nom")
+	assert.EqualError(t, err, "validate command: invalid name")
+}
+
+func TestClient_CreateBTunnel_SendError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	tcpClient.send = func(_ []byte) error {
+		return errors.New("error")
+	}
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	err = cl.CreateBTunnel("MonTunnel")
+	assert.EqualError(t, err, "send command: error")
+}
+
+func TestClient_CreateBTunnel_NackError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			// send nack
+			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			tcpClient.callOnPayload(pdu.Marshal(command.NewNackWithTransactionID(cmd.TransactionID())))
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	assert.EqualError(t, err, "server refuses to create Tunnel")
+}
+
+func TestClient_CreateBTunnel_TimeoutError_NoResponse(t *testing.T) {
+	mock.Do(t, &waitForAckTimeout, time.Second) // Not too long for tests execution
+
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			// Not responding
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	assert.EqualError(t, err, "timeout waiting for server acknowledgement")
+}
+
+func TestClient_CreateBTunnel_TimeoutError_WrongAckTransactionID(t *testing.T) {
+	mock.Do(t, &waitForAckTimeout, time.Second) // Not too long for tests execution
+
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			// Respond with other transactionID
+			tcpClient.callOnPayload(pdu.Marshal(command.NewAckWithTransactionID(id.New())))
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	assert.EqualError(t, err, "timeout waiting for server acknowledgement")
+}
+
+func TestClient_CreateBTunnel_TimeoutError_InvalidPayload(t *testing.T) {
+	mock.Do(t, &waitForAckTimeout, time.Second) // Not too long for tests execution
+
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			// Sending unparsable payload
+			tcpClient.callOnPayload([]byte{})
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	assert.EqualError(t, err, "timeout waiting for server acknowledgement")
+}
+
+func TestClient_CreateBTunnel_TimeoutError_UnsupportedCommand(t *testing.T) {
+	mock.Do(t, &waitForAckTimeout, time.Second) // Not too long for tests execution
+
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			createTunnel, ok := cmd.(*command.CreateTunnel)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", createTunnel.Name)
+			// Sending back the CreateTunnel commands (which doesn't make sense for a client to receive it)
+			tcpClient.callOnPayload(pdu.Marshal(cmd))
+		case <-time.After(100 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.CreateBTunnel("MyTunnel")
+	assert.EqualError(t, err, "timeout waiting for server acknowledgement")
 }
