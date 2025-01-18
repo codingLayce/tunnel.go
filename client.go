@@ -190,6 +190,7 @@ func (c *Client) retryToConnect() bool {
 	// The delay between retries is incrementing by 20%.
 	// After 30 tries, the delay is around 3m17s and the time spend retrying is around 16m24s.
 	// TODO: Implement a max retries
+	// TODO: Introduce retry policy to allow the user to choose
 	delay := time.Second
 	c.Logger.Debug("Retry to connect to Tunnel server...")
 	err := c.internal.Connect()

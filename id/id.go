@@ -15,7 +15,7 @@ const (
 )
 
 // New generates an id made of 8 bytes.
-// There is 218.340.105.584.896 possible ids.
+// There is 2.821.109.907.456 possible ids.
 func New() string {
 	builder := strings.Builder{}
 	for i := 0; i < idLength; i++ {

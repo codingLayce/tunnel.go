@@ -1,6 +1,6 @@
 = Tunnel.go
 
-Is a dead simple messaging system written in Go.
+Is a dead simple messaging system written in Go. It aims to facilitate the dialogue and messages exchange between services.
 
 It's based on top of TCP with a custom protocol.
 
@@ -14,15 +14,31 @@ Client SDK in Golang to communicate with a Tunnel server.
 
 [source,Go]
 ----
-    package main
-
     import "github.com/codingLayce/tunnel.go"
 
     func main() {
         client, err := tunnel.Connect("tunnel.server.addr:19917")
-		if err != nil {
-			panic(err)
-		}
-		defer client.Stop() // Don't forget for graceful shutdown
+        if err != nil {
+            panic(err)
+        }
+        defer client.Stop() // Don't forget for graceful shutdown
+    }
+----
+
+=== Create a Brodcast Tunnel
+
+After a successful call to `CreateBTunnel` a broadcast Tunnel is created server-side.
+
+[source,Go]
+----
+    import "github.com/codingLayce/tunnel.go"
+
+    func main() {
+        // ... client setup ...
+
+        err := client.CreateBTunnel("MyTunnel")
+        if err != nil {
+            panic(err)
+        }
     }
 ----
