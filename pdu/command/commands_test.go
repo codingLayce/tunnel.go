@@ -53,10 +53,15 @@ func TestParse_Errors(t *testing.T) {
 			data:             []byte("Bidule"),
 			expectedErrorMsg: `invalid acknowledgement command: unknown data "Bidule"`,
 		},
-		"Invalid create tunnel": {
+		"Invalid create tunnel validation": {
 			indicator:        CreateTunnelIndicator,
 			data:             []byte("Mon_Tunnel"),
 			expectedErrorMsg: `invalid create_tunnel command: invalid type`,
+		},
+		"Invalid create tunnel data": {
+			indicator:        CreateTunnelIndicator,
+			data:             []byte{},
+			expectedErrorMsg: `invalid payload: missing tunnel type`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
