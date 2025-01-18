@@ -42,6 +42,9 @@ type Client struct {
 //
 // Internally the Client is going to keep the connection with the server active (by retrying to connect with the Tunnel server if the connection is lost).
 func Connect(addr string) (*Client, error) {
+	// TODO: More configurations for logger
+	slog.SetLogLoggerLevel(slog.LevelInfo)
+
 	client := &Client{
 		addr:       addr,
 		Logger:     slog.Default().With("entity", "TUNNEL_CLIENT"),
@@ -58,7 +61,7 @@ func Connect(addr string) (*Client, error) {
 		return nil, fmt.Errorf("connect to Tunnel server: %w", err)
 	}
 
-	client.Logger.Debug("Connected to Tunnel server")
+	client.Logger.Info("Connected to Tunnel server")
 
 	client.wg.Add(1)
 	go client.keepConnectedLoop()
@@ -71,6 +74,7 @@ func Connect(addr string) (*Client, error) {
 func (c *Client) Stop() {
 	close(c.stop)
 	c.wg.Wait()
+	c.Logger.Info("Stopped")
 }
 
 // CreateBTunnel asks the server to create a new Broadcast Tunnel.
@@ -84,12 +88,14 @@ func (c *Client) CreateBTunnel(name string) error {
 	}
 
 	payload := pdu.Marshal(cmd)
+	c.Logger.Debug("Sending payload", "payload", payload)
+
 	err = c.internal.Send(payload)
 	if err != nil {
 		return fmt.Errorf("send command: %w", err)
 	}
 
-	c.Logger.Debug("Sent command to server", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
+	c.Logger.Info("Sent command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
 
 	ackCh := c.newAckWaiter(cmd.TransactionID())
 	defer c.unstoreAckWaiter(cmd.TransactionID())
@@ -97,10 +103,10 @@ func (c *Client) CreateBTunnel(name string) error {
 	select {
 	case ack := <-ackCh:
 		if ack {
-			c.Logger.Info("Tunnel created", "tunnel", cmd.Info())
+			c.Logger.Info("Tunnel created", "tunnel_name", cmd.Name)
 			return nil
 		}
-		c.Logger.Warn("Tunnel not created", "tunnel", cmd.Info())
+		c.Logger.Warn("Tunnel not created", "tunnel_name", cmd.Name)
 		return fmt.Errorf("server refuses to create Tunnel")
 	case <-time.After(waitForAckTimeout):
 		c.Logger.Error("Timeout waiting for server acknowledgement")
@@ -112,13 +118,15 @@ func (c *Client) onPayload(payload []byte) {
 	// Invoked by the tcpConnection when a payload is received.
 	// IT'S BLOCKING THE TCP CONNECTION.
 
-	c.Logger.Debug("Received payload from server", "payload_string", string(payload))
+	c.Logger.Debug("Received payload", "payload", payload)
 
 	cmd, err := pdu.Unmarshal(payload)
 	if err != nil {
 		c.Logger.Warn("Received unparsable payload. Discarding it.", "error", err)
 		return
 	}
+
+	c.Logger.Info("Received command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
 
 	switch cmd.(type) {
 	case *command.Ack:
@@ -179,7 +187,7 @@ func (c *Client) keepConnectedLoop() {
 				c.Logger.Debug("Client asked to stop. Not reconnected")
 				return
 			}
-			c.Logger.Debug("Reconnected to Tunnel server !")
+			c.Logger.Debug("Reconnected !")
 		}
 	}
 }
@@ -192,7 +200,7 @@ func (c *Client) retryToConnect() bool {
 	// TODO: Implement a max retries
 	// TODO: Introduce retry policy to allow the user to choose
 	delay := time.Second
-	c.Logger.Debug("Retry to connect to Tunnel server...")
+	c.Logger.Debug("Retry to connect...")
 	err := c.internal.Connect()
 	for err != nil {
 		c.Logger.Debug("Cannot reach Tunnel server. Retrying after delay", "delay", delay)
@@ -218,8 +226,4 @@ func (c *Client) resetInternal() {
 
 var newTCPClient = func(opts *tcp.ClientOption) TCPClient {
 	return tcp.NewClient(opts)
-}
-
-func init() {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
 }
