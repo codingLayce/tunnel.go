@@ -138,6 +138,7 @@ func (c *Client) acknowledgementReceived(transactionID string, isAck bool) {
 		c.Logger.Warn("Received unexpected acknowledgement. Discarding it.")
 		return
 	}
+	// TODO: Could be blocking if nobody listen to it (shouldn't happen but you know..)
 	waiter <- isAck
 }
 
@@ -171,7 +172,7 @@ func (c *Client) keepConnectedLoop() {
 			c.Logger.Debug("Client asked to stop")
 			return
 		case <-c.internal.Done():
-			c.Logger.Debug("Connection lost with Tunnel server. Reconnecting...")
+			c.Logger.Debug("Connection lost with Tunnel server")
 			c.resetInternal()
 			hasReconnect := c.retryToConnect()
 			if !hasReconnect {
@@ -190,13 +191,15 @@ func (c *Client) retryToConnect() bool {
 	// After 30 tries, the delay is around 3m17s and the time spend retrying is around 16m24s.
 	// TODO: Implement a max retries
 	delay := time.Second
+	c.Logger.Debug("Retry to connect to Tunnel server...")
 	err := c.internal.Connect()
 	for err != nil {
+		c.Logger.Debug("Cannot reach Tunnel server. Retrying after delay", "delay", delay)
 		select {
 		case <-c.stop:
 			return false
 		case <-time.After(delay):
-			delay = time.Duration(float64(delay) * 1.2)
+			delay = time.Duration(float64(delay) * 1.2).Round(time.Millisecond)
 			err = c.internal.Connect()
 		}
 	}
