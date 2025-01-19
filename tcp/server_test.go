@@ -20,7 +20,7 @@ func TestServer(t *testing.T) {
 	connectionReceived := make(chan struct{})
 	connectionClosed := make(chan struct{})
 	srv := NewServer(&ServerOption{
-		Addr: ":19917",
+		Addr: ":0",
 		OnConnectionReceived: func(conn *Connection) {
 			connectionReceived <- struct{}{}
 		},
@@ -34,7 +34,7 @@ func TestServer(t *testing.T) {
 	slog.Debug("Server started")
 
 	// Initiate connection 1 and wait for connection callback
-	conn1, err := net.Dial("tcp", ":19917")
+	conn1, err := net.Dial("tcp", srv.Addr())
 	require.NoError(t, err)
 
 	select {
@@ -45,7 +45,7 @@ func TestServer(t *testing.T) {
 	}
 
 	// Initiate connection 2 and wait for connection callback
-	_, err = net.Dial("tcp", ":19917")
+	_, err = net.Dial("tcp", srv.Addr())
 	require.NoError(t, err)
 
 	select {
@@ -67,11 +67,7 @@ func TestServer(t *testing.T) {
 	}
 
 	// Stop the server
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		srv.Stop()
-	}()
+	go srv.Stop()
 
 	// Connection 2 should close and invoke the callback
 	select {
@@ -83,7 +79,7 @@ func TestServer(t *testing.T) {
 
 	// Graceful shutdown wait
 	select {
-	case <-stopped:
+	case <-srv.Done():
 		slog.Debug("Server stopped")
 	case <-time.After(50 * time.Millisecond):
 		assert.FailNow(t, "Server should have stopped")

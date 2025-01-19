@@ -208,7 +208,7 @@ func TestClient_CreateBTunnel_NackError(t *testing.T) {
 	}()
 
 	err = cl.CreateBTunnel("MyTunnel")
-	assert.EqualError(t, err, "server refuses to create Tunnel")
+	assert.EqualError(t, err, "server nack")
 }
 
 func TestClient_CreateBTunnel_TimeoutError_NoResponse(t *testing.T) {

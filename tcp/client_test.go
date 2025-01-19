@@ -12,7 +12,7 @@ import (
 func TestClient(t *testing.T) {
 	serverSideClient := make(chan *Connection)
 	server := NewServer(&ServerOption{
-		Addr: ":19917",
+		Addr: ":0",
 		OnConnectionReceived: func(conn *Connection) {
 			serverSideClient <- conn
 		},
@@ -25,7 +25,7 @@ func TestClient(t *testing.T) {
 
 	payloadReceived := make(chan []byte)
 	cl := NewClient(&ClientOption{
-		Addr: ":19917",
+		Addr: server.Addr(),
 		OnPayload: func(payload []byte) {
 			payloadReceived <- payload
 		},
@@ -55,14 +55,10 @@ func TestClient(t *testing.T) {
 	}
 
 	// Stop the client
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		cl.Stop()
-	}()
+	go cl.Stop()
 
 	select {
-	case <-stopped:
+	case <-cl.Done():
 		slog.Debug("Client stopped")
 	case <-time.After(50 * time.Millisecond):
 		assert.FailNow(t, "Client should have stopped")
