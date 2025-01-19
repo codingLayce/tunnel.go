@@ -77,11 +77,64 @@ func (c *Client) Stop() {
 	c.Logger.Info("Stopped")
 }
 
+// ListenTunnel makes the client listening for the given Tunnel's name messages.
+// When a message is received, the callback function is invoked.
+func (c *Client) ListenTunnel(name string, _ func()) error {
+	cmd := command.NewListenTunnel(name)
+	err := c.sendCommand(cmd)
+	if err != nil {
+		// TODO: Better error handling (typed error returned to client)
+		return err
+	}
+
+	err = c.waitAck(cmd.TransactionID())
+	if err != nil {
+		// TODO: Better error handling (typed error returned to client)
+		return err
+	}
+
+	// TODO: Implement the actual listening
+
+	return nil
+}
+
 // CreateBTunnel asks the server to create a new Broadcast Tunnel.
 // Returns an error if the name is invalid or if the server nack the request.
 func (c *Client) CreateBTunnel(name string) error {
 	cmd := command.NewCreateTunnel(name)
 	cmd.Type = command.BroadcastTunnel
+
+	err := c.sendCommand(cmd)
+	if err != nil {
+		// TODO: Better error handling (typed error returned to client)
+		return err
+	}
+
+	err = c.waitAck(cmd.TransactionID())
+	if err != nil {
+		// TODO: Better error handling (typed error returned to client)
+		c.Logger.Error("Error waiting for ack", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) waitAck(transactionID string) error {
+	ackCh := c.newAckWaiter(transactionID)
+	defer c.unstoreAckWaiter(transactionID)
+	select {
+	case ack := <-ackCh:
+		if ack {
+			return nil
+		}
+		return fmt.Errorf("server nack")
+	case <-time.After(waitForAckTimeout):
+		return fmt.Errorf("timeout waiting for server acknowledgement")
+	}
+}
+
+func (c *Client) sendCommand(cmd command.Command) error {
 	err := cmd.Validate()
 	if err != nil {
 		return fmt.Errorf("validate command: %w", err)
@@ -96,22 +149,7 @@ func (c *Client) CreateBTunnel(name string) error {
 	}
 
 	c.Logger.Info("Sent command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
-
-	ackCh := c.newAckWaiter(cmd.TransactionID())
-	defer c.unstoreAckWaiter(cmd.TransactionID())
-
-	select {
-	case ack := <-ackCh:
-		if ack {
-			c.Logger.Info("Tunnel created", "tunnel_name", cmd.Name)
-			return nil
-		}
-		c.Logger.Warn("Tunnel not created", "tunnel_name", cmd.Name)
-		return fmt.Errorf("server refuses to create Tunnel")
-	case <-time.After(waitForAckTimeout):
-		c.Logger.Error("Timeout waiting for server acknowledgement")
-		return fmt.Errorf("timeout waiting for server acknowledgement")
-	}
+	return nil
 }
 
 func (c *Client) onPayload(payload []byte) {
