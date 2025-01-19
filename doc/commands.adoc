@@ -60,3 +60,27 @@ The server responds with a `nack` means that the Tunnel has not been created.
 |===
 
 * Example : Asks to create a broadcast Tunnel with the name "MyTunnel" `@abcd12340MyTunnel\n`
+
+== Listen to Tunnel
+
+Asks the server to register the client as a listener of the given Tunnel.
+
+The server responds with a `ack` means that the client is now listening the Tunnel.
+
+The server responds with a `nack` means that the client isn't listening the Tunnel.
+
+* Usage : client
+* Indicator : `#`
+* Arguments : <tunnel_name> (n bytes)
+* Example : `#abcd1234MyTunnel\n`
+
+== Server remove listener
+
+The server can remove a server listener (when Tunnel is remove or when client is disconnected)
+
+No ack is waited by the server (you are disconnected that's how it is).
+
+* Usage : server
+* Indicator : `!`
+* Arguments : <tunnel_name> (n bytes)
+* Example : `!abcd1234MyTunnel\n`

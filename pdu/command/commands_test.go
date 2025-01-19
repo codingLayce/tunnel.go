@@ -29,6 +29,11 @@ func TestParse(t *testing.T) {
 			data:            data([]byte{0}, []byte("Bidule17")),
 			expectedCommand: NewCreateTunnelWithTransactionID(transactionID, "Bidule17"),
 		},
+		"Listen Tunnel": {
+			indicator:       ListenTunnelIndicator,
+			data:            []byte("Bidule"),
+			expectedCommand: NewListenTunnelWithTransactionID(transactionID, "Bidule"),
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			cmd, err := Parse(tc.indicator, transactionID, tc.data)
@@ -62,6 +67,16 @@ func TestParse_Errors(t *testing.T) {
 			indicator:        CreateTunnelIndicator,
 			data:             []byte{},
 			expectedErrorMsg: `invalid payload: missing tunnel type`,
+		},
+		"Invalid listen tunnel validation": {
+			indicator:        ListenTunnelIndicator,
+			data:             []byte("Mon_Tunnel"),
+			expectedErrorMsg: `invalid listen_tunnel command: invalid name`,
+		},
+		"Invalid listen tunnel payload": {
+			indicator:        ListenTunnelIndicator,
+			data:             []byte(""),
+			expectedErrorMsg: `invalid payload: missing tunnel name`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

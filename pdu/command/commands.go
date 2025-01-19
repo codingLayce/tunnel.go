@@ -9,6 +9,7 @@ import (
 const (
 	AcknowledgementIndicator byte = '@'
 	CreateTunnelIndicator    byte = '+'
+	ListenTunnelIndicator    byte = '#'
 )
 
 type Command interface {
@@ -27,6 +28,8 @@ func Parse(indicator byte, transactionID string, data []byte) (Command, error) {
 		return parseAcknowledgement(transactionID, data)
 	case CreateTunnelIndicator:
 		return parseCreateTunnel(transactionID, data)
+	case ListenTunnelIndicator:
+		return parseListenTunnel(transactionID, data)
 	default:
 		return nil, fmt.Errorf("invalid command indicator: unknown 0x%x", indicator)
 	}
