@@ -59,7 +59,7 @@ The server responds with a `nack` means that the Tunnel has not been created.
 |Name of the Tunnel to create.
 |===
 
-* Example : Asks to create a broadcast Tunnel with the name "MyTunnel" `@abcd12340MyTunnel\n`
+* Example : `@abcd12340MyTunnel\n` => Asks to create a broadcast Tunnel `MyTunnel`.
 
 == Listen to Tunnel
 
@@ -72,15 +72,36 @@ The server responds with a `nack` means that the client isn't listening the Tunn
 * Usage : client
 * Indicator : `#`
 * Arguments : <tunnel_name> (n bytes)
-* Example : `#abcd1234MyTunnel\n`
+* Example : `#abcd1234MyTunnel\n` => Ask to listen to the Tunnel `MyTunnel`.
 
-== Server remove listener
+== Publish message to Tunnel
 
-The server can remove a server listener (when Tunnel is remove or when client is disconnected)
+/!\ Only supporting string messages for now /!\
 
-No ack is waited by the server (you are disconnected that's how it is).
+Has a client you can publish messages to a Tunnel. The Tunnel must exist, and you must be listening to it in order to succeed.
+
+The message reconciliation, on the server-side, depend on the Tunnel's type. For a broadcast Tunnel, the message will be sent to all listeners except for the originator.
+
+The server responds with a `ack` means that the message has been successfully registered.
+
+The server responds with a `nack` means that the message hasn't been registered.
+
+* Usage : client
+* Indicator : `>`
+* Arguments : `<tunnel_name> <message>` (Note that currently, the first space found act as separator between `tunnel_name` and `message`)
+* Example : `>abcd1234MyTunnel Mon super message !\n` => Publish to the Tunnel `MyTunnel` the message `Mon super message !`.
+
+== Receive message from Tunnel
+
+/!\ Only supporting string messages for now /!\
+
+The server send you messages for the Tunnel you are listening to.
+
+You must respond with a `ack` when you successfully processed the message.
+
+You must respond with a `nack` when you didn't process the message (currently the message will be lost but will change in the future).
 
 * Usage : server
-* Indicator : `!`
-* Arguments : <tunnel_name> (n bytes)
-* Example : `!abcd1234MyTunnel\n`
+* Indicator : `<`
+* Arguments : `<tunnel_name> <message>` (Note that currently, the first space found act as separator between `tunnel_name` and `message`)
+* Example : `<abcd1234MyTunnel Mon super message !\n` => Indicates that the message `Mon super message !` has been published to the Tunnel `MyTunnel`.
