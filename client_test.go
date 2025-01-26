@@ -417,3 +417,86 @@ func TestClient_ListenTunnel_NackError(t *testing.T) {
 	err = cl.ListenTunnel("MyTunnel", func(_ string) {})
 	assert.EqualError(t, err, "server nack")
 }
+
+func TestClient_PublishMessage(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			publishMessage, ok := cmd.(*command.PublishMessage)
+			require.True(t, ok)
+			assert.Equal(t, "Bidule", publishMessage.TunnelName)
+			assert.Equal(t, "Mon super message", publishMessage.Message)
+			// send ack
+			time.Sleep(50 * time.Millisecond) // Let time to waiter to be created
+			tcpClient.callOnPayload(pdu.Marshal(command.NewAckWithTransactionID(cmd.TransactionID())))
+		case <-time.After(50 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a CreateTunnel command")
+		}
+	}()
+
+	err = cl.PublishMessage("Bidule", "Mon super message")
+	require.NoError(t, err)
+}
+
+func TestClient_PublishMessage_ValidationError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	err = cl.PublishMessage("Un super tunnel avec un mauvais _nom", "Mon message")
+	assert.EqualError(t, err, "validate command: invalid tunnel_name")
+}
+
+func TestClient_PublishMessage_SendError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	tcpClient.send = func(_ []byte) error {
+		return errors.New("error")
+	}
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	err = cl.PublishMessage("MonTunnel", "Mon message")
+	assert.EqualError(t, err, "send command: error")
+}
+
+func TestClient_PublishMessage_NackError(t *testing.T) {
+	tcpClient := newTestTCPClient()
+	mockNewTCPClient(t, tcpClient)
+
+	cl, err := Connect("")
+	require.NoError(t, err)
+	defer cl.Stop()
+
+	go func() {
+		select {
+		case cmd := <-tcpClient.commandsChan():
+			slog.Debug("[SERVER] Received command", "command", cmd.Info())
+			publishMessage, ok := cmd.(*command.PublishMessage)
+			require.True(t, ok)
+			assert.Equal(t, "MyTunnel", publishMessage.TunnelName)
+			assert.Equal(t, "Mon message", publishMessage.Message)
+			// send nack
+			time.Sleep(50 * time.Millisecond) // Let time to waiter to be created
+			tcpClient.callOnPayload(pdu.Marshal(command.NewNackWithTransactionID(cmd.TransactionID())))
+		case <-time.After(50 * time.Millisecond):
+			assert.FailNow(t, "Server should have received a ListenTunnel command")
+		}
+	}()
+
+	err = cl.PublishMessage("MyTunnel", "Mon message")
+	assert.EqualError(t, err, "server nack")
+}

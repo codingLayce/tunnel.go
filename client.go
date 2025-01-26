@@ -82,6 +82,25 @@ func (c *Client) Stop() {
 	c.Logger.Info("Stopped")
 }
 
+// PublishMessage publishes the given message to the given Tunnel.
+// Returns an error if the server doesn't accept the message.
+func (c *Client) PublishMessage(tunnelName, message string) error {
+	cmd := command.NewPublishMessage(tunnelName, message)
+	err := c.sendCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = c.waitAck(cmd.TransactionID())
+	if err != nil {
+		// TODO: Better error handling (typed error returned to client)
+		c.Logger.Error("Error waiting for ack", "error", err)
+		return err
+	}
+
+	return nil
+}
+
 // ListenTunnel makes the client listening for the given Tunnel's name messages.
 // When a message is received, the callback function is invoked.
 func (c *Client) ListenTunnel(name string, callback func(string)) error {
@@ -95,6 +114,7 @@ func (c *Client) ListenTunnel(name string, callback func(string)) error {
 	err = c.waitAck(cmd.TransactionID())
 	if err != nil {
 		// TODO: Better error handling (typed error returned to client)
+		c.Logger.Error("Error waiting for ack", "error", err)
 		return err
 	}
 
