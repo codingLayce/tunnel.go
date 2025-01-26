@@ -68,7 +68,7 @@ func mockNewTCPClient(t *testing.T, client *TestTCPClient) {
 }
 
 func TestMain(m *testing.M) {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.SetLogLoggerLevel(slog.LevelInfo)
 
 	m.Run()
 }

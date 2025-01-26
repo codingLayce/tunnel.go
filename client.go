@@ -30,6 +30,11 @@ type Client struct {
 	// true is written when ack is received, false is written when nack is received.
 	ackWaiters map[string]chan bool
 
+	// listeners stores channel used to receive message from the given tunnel name (key).
+	// The raw string message is passed to the channel.
+	// /!\ Currently there is no way to stop listening /!\
+	listeners map[string]chan string
+
 	stop chan struct{}
 	wg   sync.WaitGroup
 	mtx  sync.Mutex
@@ -42,13 +47,13 @@ type Client struct {
 //
 // Internally the Client is going to keep the connection with the server active (by retrying to connect with the Tunnel server if the connection is lost).
 func Connect(addr string) (*Client, error) {
-	// TODO: More configurations for logger
-	slog.SetLogLoggerLevel(slog.LevelInfo)
+	// TODO: Configurations for logger
 
 	client := &Client{
 		addr:       addr,
 		Logger:     slog.Default().With("entity", "TUNNEL_CLIENT"),
 		ackWaiters: make(map[string]chan bool),
+		listeners:  make(map[string]chan string),
 		stop:       make(chan struct{}),
 	}
 	client.internal = newTCPClient(&tcp.ClientOption{
@@ -79,7 +84,7 @@ func (c *Client) Stop() {
 
 // ListenTunnel makes the client listening for the given Tunnel's name messages.
 // When a message is received, the callback function is invoked.
-func (c *Client) ListenTunnel(name string, _ func()) error {
+func (c *Client) ListenTunnel(name string, callback func(string)) error {
 	cmd := command.NewListenTunnel(name)
 	err := c.sendCommand(cmd)
 	if err != nil {
@@ -93,7 +98,8 @@ func (c *Client) ListenTunnel(name string, _ func()) error {
 		return err
 	}
 
-	// TODO: Implement the actual listening
+	c.wg.Add(1)
+	go c.listenTunnel(name, callback)
 
 	return nil
 }
@@ -118,6 +124,22 @@ func (c *Client) CreateBTunnel(name string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) listenTunnel(tunnelName string, callback func(string)) {
+	defer c.wg.Done()
+	msgCh := c.newListener(tunnelName)
+
+	for {
+		select {
+		case msg := <-msgCh:
+			c.Logger.Debug("Received message", "tunnel_name", tunnelName, "message", msg)
+			callback(msg)
+		case <-c.stop:
+			c.Logger.Debug("Stop listening Tunnel", "tunnel_name", tunnelName)
+			return
+		}
+	}
 }
 
 func (c *Client) waitAck(transactionID string) error {
@@ -166,11 +188,13 @@ func (c *Client) onPayload(payload []byte) {
 
 	c.Logger.Info("Received command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
 
-	switch cmd.(type) {
+	switch castedCMD := cmd.(type) {
 	case *command.Ack:
 		c.acknowledgementReceived(cmd.TransactionID(), true)
 	case *command.Nack:
 		c.acknowledgementReceived(cmd.TransactionID(), false)
+	case *command.ReceiveMessage:
+		c.messageReceived(castedCMD)
 	default:
 		c.Logger.Warn("Received unsupported command", "command", cmd.Info())
 	}
@@ -188,9 +212,31 @@ func (c *Client) acknowledgementReceived(transactionID string, isAck bool) {
 	waiter <- isAck
 }
 
+func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
+	c.mtx.Lock()
+	ch, ok := c.listeners[cmd.TunnelName]
+	c.mtx.Unlock()
+	if !ok {
+		c.Logger.Error("No listener for the received message", "tunnel_name", cmd.TunnelName)
+		return
+	}
+	select { // Prevent blocking when the Client is stopped.
+	case ch <- cmd.Message:
+	case <-c.stop:
+	}
+}
+
+func (c *Client) newListener(tunnelName string) <-chan string {
+	// Creates a channel and stores it into listeners.
+	ch := make(chan string)
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	c.listeners[tunnelName] = ch
+	return ch
+}
+
 func (c *Client) newAckWaiter(transactionID string) <-chan bool {
 	// Creates a channel and stores it into ackWaiters.
-
 	ch := make(chan bool)
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
