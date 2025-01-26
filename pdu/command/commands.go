@@ -11,6 +11,7 @@ const (
 	CreateTunnelIndicator    byte = '+'
 	ListenTunnelIndicator    byte = '#'
 	PublishMessageIndicator  byte = '>'
+	ReceiveMessageIndicator  byte = '<'
 )
 
 type Command interface {
@@ -33,6 +34,8 @@ func Parse(indicator byte, transactionID string, data []byte) (Command, error) {
 		return parseListenTunnel(transactionID, data)
 	case PublishMessageIndicator:
 		return parsePublishMessage(transactionID, data)
+	case ReceiveMessageIndicator:
+		return parseReceiveMessage(transactionID, data)
 	default:
 		return nil, fmt.Errorf("invalid command indicator: unknown 0x%x", indicator)
 	}

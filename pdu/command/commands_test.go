@@ -39,6 +39,11 @@ func TestParse(t *testing.T) {
 			data:            data([]byte("TunnelName"), []byte{' '}, []byte("Mon super message")),
 			expectedCommand: NewPublishMessageWithTransactionID(transactionID, "TunnelName", "Mon super message"),
 		},
+		"Receive Message": {
+			indicator:       ReceiveMessageIndicator,
+			data:            data([]byte("TunnelName"), []byte{' '}, []byte("Mon super message")),
+			expectedCommand: NewReceiveMessageWithTransactionID(transactionID, "TunnelName", "Mon super message"),
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			cmd, err := Parse(tc.indicator, transactionID, tc.data)
@@ -102,6 +107,21 @@ func TestParse_Errors(t *testing.T) {
 			indicator:        PublishMessageIndicator,
 			data:             []byte("Bidule Invalide message chars &*&*"),
 			expectedErrorMsg: "invalid publish_message command: invalid message",
+		},
+		"Receive_message invalid payload": {
+			indicator:        ReceiveMessageIndicator,
+			data:             []byte(""),
+			expectedErrorMsg: "invalid payload: missing separator, cannot determine values",
+		},
+		"Receive_message invalid validation - Tunnel Name": {
+			indicator:        ReceiveMessageIndicator,
+			data:             []byte("Invalid_Tunnel Mon super message"),
+			expectedErrorMsg: "invalid receive_message command: invalid tunnel_name",
+		},
+		"Receive_message invalid validation - Message": {
+			indicator:        ReceiveMessageIndicator,
+			data:             []byte("Bidule Invalide message chars &*&*"),
+			expectedErrorMsg: "invalid receive_message command: invalid message",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
