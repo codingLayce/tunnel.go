@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-var createTunnelNameValidator = regexp.MustCompile(`^[a-zA-Z\d]+$`)
+var tunnelNameValidator = regexp.MustCompile(`^[a-zA-Z\d]+$`)
 
 type TunnelType byte
 
@@ -26,9 +26,8 @@ func parseCreateTunnel(transactionID string, data []byte) (Command, error) {
 		return nil, fmt.Errorf("invalid payload: missing tunnel type")
 	}
 
-	cmd := NewCreateTunnel(string(data[1:]))
+	cmd := NewCreateTunnelWithTransactionID(transactionID, string(data[1:]))
 	cmd.Type = TunnelType(data[0])
-	cmd.transactionID = transactionID
 	err := cmd.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid create_tunnel command: %s", err)
@@ -48,7 +47,7 @@ func (cmd *CreateTunnel) Validate() error {
 	if cmd.Type != BroadcastTunnel {
 		return fmt.Errorf("invalid type")
 	}
-	if createTunnelNameValidator.MatchString(cmd.Name) {
+	if tunnelNameValidator.MatchString(cmd.Name) {
 		return nil
 	}
 	// TODO : Limit name size

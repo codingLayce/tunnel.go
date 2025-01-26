@@ -30,8 +30,7 @@ func parseListenTunnel(transactionID string, data []byte) (Command, error) {
 		return nil, fmt.Errorf("invalid payload: missing tunnel name")
 	}
 
-	cmd := NewListenTunnel(string(data))
-	cmd.transactionID = transactionID
+	cmd := NewListenTunnelWithTransactionID(transactionID, string(data))
 	err := cmd.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid listen_tunnel command: %s", err)
@@ -40,7 +39,7 @@ func parseListenTunnel(transactionID string, data []byte) (Command, error) {
 }
 
 func (cmd *ListenTunnel) Validate() error {
-	if createTunnelNameValidator.MatchString(cmd.Name) {
+	if tunnelNameValidator.MatchString(cmd.Name) {
 		return nil
 	}
 	return fmt.Errorf("invalid name")

@@ -1,5 +1,7 @@
 package command
 
+import "fmt"
+
 const (
 	ackData  = "OK"
 	nackData = "KO"
@@ -16,6 +18,17 @@ type (
 		transactionID string
 	}
 )
+
+func parseAcknowledgement(transactionID string, data []byte) (Command, error) {
+	switch string(data) {
+	case ackData:
+		return NewAckWithTransactionID(transactionID), nil
+	case nackData:
+		return NewNackWithTransactionID(transactionID), nil
+	default:
+		return nil, fmt.Errorf("invalid acknowledgement command: unknown data %q", string(data))
+	}
+}
 
 func NewAck() *Ack                                      { return &Ack{transactionID: newID()} }
 func NewAckWithTransactionID(transactionID string) *Ack { return &Ack{transactionID: transactionID} }

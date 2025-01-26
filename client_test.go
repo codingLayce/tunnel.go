@@ -51,7 +51,7 @@ func TestConnect_ServerDisconnecting(t *testing.T) {
 	// Wait for the first connect and make it complete
 	select {
 	case connectCalled <- nil:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		assert.FailNow(t, "Connect should have been called")
 	}
 
@@ -61,7 +61,7 @@ func TestConnect_ServerDisconnecting(t *testing.T) {
 	// Wait for the automatic connection retry and makes it fail
 	select {
 	case connectCalled <- errors.New("error"):
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		assert.FailNow(t, "Connect should have been called")
 	}
 
@@ -81,7 +81,7 @@ func TestConnect_ServerDisconnecting(t *testing.T) {
 	select {
 	case connectCalled <- nil:
 		assert.FailNow(t, "Connect shouldn't have been called")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 	}
 }
 
@@ -102,9 +102,9 @@ func TestClient_StoppedWhileRetryConnect(t *testing.T) {
 	cl, err := Connect("")
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	close(tcpClient.done)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	stopped := make(chan struct{})
 	go func() {
@@ -146,9 +146,9 @@ func TestClient_CreateBTunnel(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
 			// send ack
-			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			time.Sleep(50 * time.Millisecond) // Let time to waiter to be created
 			tcpClient.callOnPayload(pdu.Marshal(command.NewAckWithTransactionID(cmd.TransactionID())))
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
@@ -200,9 +200,9 @@ func TestClient_CreateBTunnel_NackError(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
 			// send nack
-			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			time.Sleep(50 * time.Millisecond) // Let time to waiter to be created
 			tcpClient.callOnPayload(pdu.Marshal(command.NewNackWithTransactionID(cmd.TransactionID())))
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
@@ -229,7 +229,7 @@ func TestClient_CreateBTunnel_TimeoutError_NoResponse(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
 			// Not responding
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
@@ -255,10 +255,10 @@ func TestClient_CreateBTunnel_TimeoutError_WrongAckTransactionID(t *testing.T) {
 			createTunnel, ok := cmd.(*command.CreateTunnel)
 			require.True(t, ok)
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
-			time.Sleep(100 * time.Millisecond) // Let time to waiter to be created
+			time.Sleep(50 * time.Millisecond) // Let time to waiter to be created
 			// Respond with other transactionID
 			tcpClient.callOnPayload(pdu.Marshal(command.NewAckWithTransactionID(id.New())))
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
@@ -286,7 +286,7 @@ func TestClient_CreateBTunnel_TimeoutError_InvalidPayload(t *testing.T) {
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
 			// Sending unparsable payload
 			tcpClient.callOnPayload([]byte{})
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
@@ -314,7 +314,7 @@ func TestClient_CreateBTunnel_TimeoutError_UnsupportedCommand(t *testing.T) {
 			assert.Equal(t, "MyTunnel", createTunnel.Name)
 			// Sending back the CreateTunnel commands (which doesn't make sense for a client to receive it)
 			tcpClient.callOnPayload(pdu.Marshal(cmd))
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			assert.FailNow(t, "Server should have received a CreateTunnel command")
 		}
 	}()
