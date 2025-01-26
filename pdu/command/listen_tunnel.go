@@ -19,10 +19,9 @@ func NewListenTunnel(name string) *ListenTunnel {
 }
 
 func NewListenTunnelWithTransactionID(transactionID, name string) *ListenTunnel {
-	return &ListenTunnel{
-		transactionID: transactionID,
-		Name:          name,
-	}
+	cmd := NewListenTunnel(name)
+	cmd.transactionID = transactionID
+	return cmd
 }
 
 func parseListenTunnel(transactionID string, data []byte) (Command, error) {
@@ -39,10 +38,10 @@ func parseListenTunnel(transactionID string, data []byte) (Command, error) {
 }
 
 func (cmd *ListenTunnel) Validate() error {
-	if tunnelNameValidator.MatchString(cmd.Name) {
-		return nil
+	if !tunnelNameValidator.MatchString(cmd.Name) {
+		return fmt.Errorf("invalid name")
 	}
-	return fmt.Errorf("invalid name")
+	return nil
 }
 
 func (cmd *ListenTunnel) Info() string {

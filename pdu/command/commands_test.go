@@ -34,6 +34,11 @@ func TestParse(t *testing.T) {
 			data:            []byte("Bidule"),
 			expectedCommand: NewListenTunnelWithTransactionID(transactionID, "Bidule"),
 		},
+		"Publish Message": {
+			indicator:       PublishMessageIndicator,
+			data:            data([]byte("TunnelName"), []byte{' '}, []byte("Mon super message")),
+			expectedCommand: NewPublishMessageWithTransactionID(transactionID, "TunnelName", "Mon super message"),
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			cmd, err := Parse(tc.indicator, transactionID, tc.data)
@@ -53,30 +58,50 @@ func TestParse_Errors(t *testing.T) {
 			indicator:        0xff,
 			expectedErrorMsg: "invalid command indicator: unknown 0xff",
 		},
-		"Invalid acknowledgement": {
+		"Acknowledgement invalid payload": {
 			indicator:        AcknowledgementIndicator,
 			data:             []byte("Bidule"),
 			expectedErrorMsg: `invalid acknowledgement command: unknown data "Bidule"`,
 		},
-		"Invalid create tunnel validation": {
-			indicator:        CreateTunnelIndicator,
-			data:             []byte("Mon_Tunnel"),
-			expectedErrorMsg: `invalid create_tunnel command: invalid type`,
-		},
-		"Invalid create tunnel data": {
+		"Create_tunnel invalid payload": {
 			indicator:        CreateTunnelIndicator,
 			data:             []byte{},
 			expectedErrorMsg: `invalid payload: missing tunnel type`,
 		},
-		"Invalid listen tunnel validation": {
+		"Create_tunnel invalid validation - Type": {
+			indicator:        CreateTunnelIndicator,
+			data:             []byte("Mon_Tunnel"),
+			expectedErrorMsg: `invalid create_tunnel command: invalid type`,
+		},
+		"Create_tunnel invalid validation - Tunnel Name": {
+			indicator:        CreateTunnelIndicator,
+			data:             data([]byte{0x00}, []byte("Invalid_Tunnel")),
+			expectedErrorMsg: `invalid create_tunnel command: invalid name`,
+		},
+		"Listen_tunnel invalid payload": {
+			indicator:        ListenTunnelIndicator,
+			data:             []byte(""),
+			expectedErrorMsg: `invalid payload: missing tunnel name`,
+		},
+		"Listen_tunnel invalid validation - Tunnel Name": {
 			indicator:        ListenTunnelIndicator,
 			data:             []byte("Mon_Tunnel"),
 			expectedErrorMsg: `invalid listen_tunnel command: invalid name`,
 		},
-		"Invalid listen tunnel payload": {
-			indicator:        ListenTunnelIndicator,
+		"Publish_message invalid payload": {
+			indicator:        PublishMessageIndicator,
 			data:             []byte(""),
-			expectedErrorMsg: `invalid payload: missing tunnel name`,
+			expectedErrorMsg: "invalid payload: missing separator, cannot determine values",
+		},
+		"Publish_message invalid validation - Tunnel Name": {
+			indicator:        PublishMessageIndicator,
+			data:             []byte("Invalid_Tunnel Mon super message"),
+			expectedErrorMsg: "invalid publish_message command: invalid tunnel_name",
+		},
+		"Publish_message invalid validation - Message": {
+			indicator:        PublishMessageIndicator,
+			data:             []byte("Bidule Invalide message chars &*&*"),
+			expectedErrorMsg: "invalid publish_message command: invalid message",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

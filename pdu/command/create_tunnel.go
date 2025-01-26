@@ -6,6 +6,7 @@ import (
 	"regexp"
 )
 
+// TODO: Allow more chars like (_.-)
 var tunnelNameValidator = regexp.MustCompile(`^[a-zA-Z\d]+$`)
 
 type TunnelType byte
@@ -40,18 +41,20 @@ func NewCreateTunnel(name string) *CreateTunnel {
 }
 
 func NewCreateTunnelWithTransactionID(transactionID, name string) *CreateTunnel {
-	return &CreateTunnel{transactionID: transactionID, Name: name}
+	cmd := NewCreateTunnel(name)
+	cmd.transactionID = transactionID
+	return cmd
 }
 
 func (cmd *CreateTunnel) Validate() error {
 	if cmd.Type != BroadcastTunnel {
 		return fmt.Errorf("invalid type")
 	}
-	if tunnelNameValidator.MatchString(cmd.Name) {
-		return nil
+	if !tunnelNameValidator.MatchString(cmd.Name) {
+		return fmt.Errorf("invalid name")
 	}
 	// TODO : Limit name size
-	return fmt.Errorf("invalid name")
+	return nil
 }
 
 func (cmd *CreateTunnel) Info() string {

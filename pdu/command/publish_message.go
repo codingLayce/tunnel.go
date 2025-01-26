@@ -41,10 +41,9 @@ func NewPublishMessage(tunnelName, message string) *PublishMessage {
 }
 
 func NewPublishMessageWithTransactionID(transactionID, tunnelName, message string) *PublishMessage {
-	return &PublishMessage{transactionID: transactionID,
-		TunnelName: tunnelName,
-		Message:    message,
-	}
+	cmd := NewPublishMessage(tunnelName, message)
+	cmd.transactionID = transactionID
+	return cmd
 }
 
 func (cmd *PublishMessage) Validate() error {
