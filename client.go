@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/codingLayce/tunnel.go/common/maps"
 	"github.com/codingLayce/tunnel.go/pdu"
 	"github.com/codingLayce/tunnel.go/pdu/command"
 	"github.com/codingLayce/tunnel.go/tcp"
@@ -28,12 +29,12 @@ type Client struct {
 
 	// ackWaiters stores channel used to wait for an acknowledgement of the transaction_id (key).
 	// true is written when ack is received, false is written when nack is received.
-	ackWaiters map[string]chan bool
+	ackWaiters *maps.SyncMap[string, chan bool]
 
 	// listeners stores channel used to receive message from the given tunnel name (key).
 	// The raw string message is passed to the channel.
 	// /!\ Currently there is no way to stop listening /!\
-	listeners map[string]chan string
+	listeners *maps.SyncMap[string, chan string]
 
 	stop chan struct{}
 	wg   sync.WaitGroup
@@ -52,8 +53,8 @@ func Connect(addr string) (*Client, error) {
 	client := &Client{
 		addr:       addr,
 		Logger:     slog.Default().With("entity", "TUNNEL_CLIENT"),
-		ackWaiters: make(map[string]chan bool),
-		listeners:  make(map[string]chan string),
+		ackWaiters: maps.NewSyncMap[string, chan bool](),
+		listeners:  maps.NewSyncMap[string, chan string](),
 		stop:       make(chan struct{}),
 	}
 	client.internal = newTCPClient(&tcp.ClientOption{
@@ -148,7 +149,8 @@ func (c *Client) CreateBTunnel(name string) error {
 
 func (c *Client) listenTunnel(tunnelName string, callback func(string)) {
 	defer c.wg.Done()
-	msgCh := c.newListener(tunnelName)
+	msgCh := make(chan string)
+	c.listeners.Put(tunnelName, msgCh)
 
 	for {
 		select {
@@ -163,8 +165,10 @@ func (c *Client) listenTunnel(tunnelName string, callback func(string)) {
 }
 
 func (c *Client) waitAck(transactionID string) error {
-	ackCh := c.newAckWaiter(transactionID)
+	ackCh := make(chan bool)
+	c.ackWaiters.Put(transactionID, ackCh)
 	defer c.unstoreAckWaiter(transactionID)
+
 	select {
 	case ack := <-ackCh:
 		if ack {
@@ -221,9 +225,7 @@ func (c *Client) onPayload(payload []byte) {
 }
 
 func (c *Client) acknowledgementReceived(transactionID string, isAck bool) {
-	c.mtx.Lock()
-	waiter, ok := c.ackWaiters[transactionID]
-	c.mtx.Unlock()
+	waiter, ok := c.ackWaiters.Get(transactionID)
 	if !ok {
 		c.Logger.Warn("Received unexpected acknowledgement. Discarding it.")
 		return
@@ -233,9 +235,7 @@ func (c *Client) acknowledgementReceived(transactionID string, isAck bool) {
 }
 
 func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
-	c.mtx.Lock()
-	ch, ok := c.listeners[cmd.TunnelName]
-	c.mtx.Unlock()
+	ch, ok := c.listeners.Get(cmd.TunnelName)
 	if !ok {
 		c.Logger.Error("No listener for the received message", "tunnel_name", cmd.TunnelName)
 		return
@@ -246,32 +246,12 @@ func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
 	}
 }
 
-func (c *Client) newListener(tunnelName string) <-chan string {
-	// Creates a channel and stores it into listeners.
-	ch := make(chan string)
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	c.listeners[tunnelName] = ch
-	return ch
-}
-
-func (c *Client) newAckWaiter(transactionID string) <-chan bool {
-	// Creates a channel and stores it into ackWaiters.
-	ch := make(chan bool)
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	c.ackWaiters[transactionID] = ch
-	return ch
-}
-
 func (c *Client) unstoreAckWaiter(transactionID string) {
 	// Closes and delete the channel from ackWaiters.
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	ch, ok := c.ackWaiters[transactionID]
+	ch, ok := c.ackWaiters.Get(transactionID)
 	if ok {
 		close(ch)
-		delete(c.ackWaiters, transactionID)
+		c.ackWaiters.Delete(transactionID)
 	}
 }
 
