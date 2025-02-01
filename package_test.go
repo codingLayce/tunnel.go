@@ -31,7 +31,11 @@ func (t *TestTCPClient) Connect() error {
 }
 func (t *TestTCPClient) Stop() {
 	if t.cmdCh != nil {
-		close(t.cmdCh)
+		select {
+		case <-t.cmdCh:
+		default:
+			close(t.cmdCh)
+		}
 	}
 }
 func (t *TestTCPClient) Done() <-chan struct{} { return t.done }
@@ -45,7 +49,10 @@ func (t *TestTCPClient) Send(payload []byte) error {
 		return err
 	}
 
-	t.cmdCh <- cmd
+	select {
+	case t.cmdCh <- cmd:
+	case <-t.done:
+	}
 
 	return nil
 }
