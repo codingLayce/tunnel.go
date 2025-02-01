@@ -6,8 +6,7 @@ import (
 	"regexp"
 )
 
-// TODO: Allow more chars like (_.-)
-var tunnelNameValidator = regexp.MustCompile(`^[a-zA-Z\d]+$`)
+var tunnelNameValidator = regexp.MustCompile(`^[a-zA-Z_.\-\d]+$`)
 
 type TunnelType byte
 
