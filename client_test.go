@@ -362,6 +362,14 @@ func TestClient_ListenTunnel(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		assert.FailNow(t, "A message should have been received")
 	}
+
+	select {
+	case cmd := <-tcpClient.commandsChan():
+		_, isAck := cmd.(*command.Ack)
+		assert.True(t, isAck, "Command should have been ack")
+	case <-time.After(100 * time.Millisecond):
+		assert.FailNow(t, "A ack should have been received server side")
+	}
 }
 
 func TestClient_ListenTunnel_ValidationError(t *testing.T) {
