@@ -80,7 +80,7 @@ func TestParse_Errors(t *testing.T) {
 		},
 		"Create_tunnel invalid validation - Tunnel Name": {
 			indicator:        CreateTunnelIndicator,
-			data:             data([]byte{0x00}, []byte("Invalid_Tunnel")),
+			data:             data([]byte{0x00}, []byte("Invalid_Tunn$l")),
 			expectedErrorMsg: `invalid create_tunnel command: invalid name`,
 		},
 		"Listen_tunnel invalid payload": {
@@ -90,7 +90,7 @@ func TestParse_Errors(t *testing.T) {
 		},
 		"Listen_tunnel invalid validation - Tunnel Name": {
 			indicator:        ListenTunnelIndicator,
-			data:             []byte("Mon_Tunnel"),
+			data:             []byte("Mon_Tunn&l"),
 			expectedErrorMsg: `invalid listen_tunnel command: invalid name`,
 		},
 		"Publish_message invalid payload": {
@@ -100,7 +100,7 @@ func TestParse_Errors(t *testing.T) {
 		},
 		"Publish_message invalid validation - Tunnel Name": {
 			indicator:        PublishMessageIndicator,
-			data:             []byte("Invalid_Tunnel Mon super message"),
+			data:             []byte("Inval+d_Tunnel Mon super message"),
 			expectedErrorMsg: "invalid publish_message command: invalid tunnel_name",
 		},
 		"Publish_message invalid validation - Message": {
@@ -115,7 +115,7 @@ func TestParse_Errors(t *testing.T) {
 		},
 		"Receive_message invalid validation - Tunnel Name": {
 			indicator:        ReceiveMessageIndicator,
-			data:             []byte("Invalid_Tunnel Mon super message"),
+			data:             []byte("Invalid&Tunnel Mon super message"),
 			expectedErrorMsg: "invalid receive_message command: invalid tunnel_name",
 		},
 		"Receive_message invalid validation - Message": {
