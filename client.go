@@ -99,6 +99,8 @@ func (c *Client) PublishMessage(tunnelName, message string) error {
 		return err
 	}
 
+	c.Logger.Info("Message published to Tunnel", "tunnel_name", tunnelName)
+
 	return nil
 }
 
@@ -122,6 +124,8 @@ func (c *Client) ListenTunnel(name string, callback func(string)) error {
 	c.wg.Add(1)
 	go c.listenTunnel(name, callback)
 
+	c.Logger.Info("Listening to Tunnel", "tunnel_name", name)
+
 	return nil
 }
 
@@ -144,6 +148,8 @@ func (c *Client) CreateBTunnel(name string) error {
 		return err
 	}
 
+	c.Logger.Info("Broadcast Tunnel created")
+
 	return nil
 }
 
@@ -157,6 +163,7 @@ func (c *Client) listenTunnel(tunnelName string, callback func(string)) {
 		case msg := <-msgCh:
 			c.Logger.Debug("Received message", "tunnel_name", tunnelName, "message", msg)
 			callback(msg)
+			// TODO: Refactor callback to returns status of the message (processed or not) in order to reply accordingly.
 		case <-c.stop:
 			c.Logger.Debug("Stop listening Tunnel", "tunnel_name", tunnelName)
 			return
@@ -194,7 +201,7 @@ func (c *Client) sendCommand(cmd command.Command) error {
 		return fmt.Errorf("send command: %w", err)
 	}
 
-	c.Logger.Info("Sent command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
+	c.Logger.Debug("Sent command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
 	return nil
 }
 
@@ -210,7 +217,7 @@ func (c *Client) onPayload(payload []byte) {
 		return
 	}
 
-	c.Logger.Info("Received command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
+	c.Logger.Debug("Received command", "transaction_id", cmd.TransactionID(), "command", cmd.Info())
 
 	switch castedCMD := cmd.(type) {
 	case *command.Ack:
@@ -242,6 +249,12 @@ func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
 	}
 	select { // Prevent blocking when the Client is stopped.
 	case ch <- cmd.Message:
+		// TODO: Refacto to actually use the client's callback response to reply accordingly.
+		// Currently, always ack
+		err := c.sendCommand(command.NewAckWithTransactionID(cmd.TransactionID()))
+		if err != nil {
+			c.Logger.Warn("Cannot ack the message", "error", err, "transaction_id", cmd.TransactionID())
+		}
 	case <-c.stop:
 	}
 }
