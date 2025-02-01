@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -36,9 +37,10 @@ type Client struct {
 	// /!\ Currently there is no way to stop listening /!\
 	listeners *maps.SyncMap[string, chan string]
 
-	stop chan struct{}
-	wg   sync.WaitGroup
-	mtx  sync.Mutex
+	ctx    context.Context
+	stopFn context.CancelFunc
+	wg     sync.WaitGroup
+	mtx    sync.Mutex
 
 	Logger *slog.Logger
 }
@@ -55,7 +57,6 @@ func Connect(addr string) (*Client, error) {
 		Logger:     slog.Default().With("entity", "TUNNEL_CLIENT"),
 		ackWaiters: maps.NewSyncMap[string, chan bool](),
 		listeners:  maps.NewSyncMap[string, chan string](),
-		stop:       make(chan struct{}),
 	}
 	client.internal = newTCPClient(&tcp.ClientOption{
 		Addr:      addr,
@@ -69,7 +70,7 @@ func Connect(addr string) (*Client, error) {
 
 	client.Logger.Info("Connected to Tunnel server")
 
-	client.wg.Add(1)
+	client.ctx, client.stopFn = context.WithCancel(context.Background())
 	go client.keepConnectedLoop()
 
 	return client, nil
@@ -78,7 +79,7 @@ func Connect(addr string) (*Client, error) {
 // Stop stops the internal client.
 // Client is no longer usable after stopping it.
 func (c *Client) Stop() {
-	close(c.stop)
+	c.stopFn()
 	c.wg.Wait()
 	c.Logger.Info("Stopped")
 }
@@ -164,7 +165,7 @@ func (c *Client) listenTunnel(tunnelName string, callback func(string)) {
 			c.Logger.Debug("Received message", "tunnel_name", tunnelName, "message", msg)
 			callback(msg)
 			// TODO: Refactor callback to returns status of the message (processed or not) in order to reply accordingly.
-		case <-c.stop:
+		case <-c.ctx.Done():
 			c.Logger.Debug("Stop listening Tunnel", "tunnel_name", tunnelName)
 			return
 		}
@@ -255,7 +256,7 @@ func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
 		if err != nil {
 			c.Logger.Warn("Cannot ack the message", "error", err, "transaction_id", cmd.TransactionID())
 		}
-	case <-c.stop:
+	case <-c.ctx.Done():
 	}
 }
 
@@ -269,10 +270,11 @@ func (c *Client) unstoreAckWaiter(transactionID string) {
 }
 
 func (c *Client) keepConnectedLoop() {
+	c.wg.Add(1)
 	defer c.wg.Done()
 	for {
 		select {
-		case <-c.stop:
+		case <-c.ctx.Done():
 			c.internal.Stop()
 			c.Logger.Debug("Client asked to stop")
 			return
@@ -302,7 +304,7 @@ func (c *Client) retryToConnect() bool {
 	for err != nil {
 		c.Logger.Debug("Cannot reach Tunnel server. Retrying after delay", "delay", delay)
 		select {
-		case <-c.stop:
+		case <-c.ctx.Done():
 			return false
 		case <-time.After(delay):
 			delay = time.Duration(float64(delay) * 1.2).Round(time.Millisecond)
