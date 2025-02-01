@@ -2,6 +2,7 @@ package id
 
 import (
 	"regexp"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,4 +88,17 @@ func BenchmarkNew(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		New()
 	}
+}
+
+func TestNew_Concurrent(t *testing.T) {
+	concurrentProcesses := 10_000
+	wg := sync.WaitGroup{}
+	wg.Add(concurrentProcesses)
+	for i := 0; i < concurrentProcesses; i++ {
+		go func() {
+			defer wg.Done()
+			assert.NotEmpty(t, New())
+		}()
+	}
+	wg.Wait()
 }
