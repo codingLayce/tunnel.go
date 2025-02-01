@@ -1,6 +1,9 @@
 package maps
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 type SyncMap[Key comparable, Value any] struct {
 	internalMap map[Key]Value
@@ -17,6 +20,13 @@ func (s *SyncMap[Key, Value]) Put(key Key, value Value) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.internalMap[key] = value
+}
+
+func (s *SyncMap[Key, Value]) Has(key Key) bool {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	_, exists := s.internalMap[key]
+	return exists
 }
 
 func (s *SyncMap[Key, Value]) Get(key Key) (Value, bool) {
@@ -36,4 +46,16 @@ func (s *SyncMap[Key, Value]) Delete(key Key) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	delete(s.internalMap, key)
+}
+
+func (s *SyncMap[Key, Value]) Iterator() iter.Seq2[Key, Value] {
+	return func(yield func(Key, Value) bool) {
+		s.mtx.Lock()
+		defer s.mtx.Unlock()
+		for key, value := range s.internalMap {
+			if !yield(key, value) {
+				return
+			}
+		}
+	}
 }
