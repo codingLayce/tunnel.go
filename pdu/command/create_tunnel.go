@@ -57,7 +57,6 @@ func (cmd *CreateTunnel) Validate() error {
 }
 
 func (cmd *CreateTunnel) Info() string {
-	// TODO : Specify the Tunnel type
 	return fmt.Sprintf("CREATE_TUNNEL(%s)", cmd.Name)
 }
 func (cmd *CreateTunnel) TransactionID() string { return cmd.transactionID }

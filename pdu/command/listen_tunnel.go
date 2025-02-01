@@ -45,7 +45,6 @@ func (cmd *ListenTunnel) Validate() error {
 }
 
 func (cmd *ListenTunnel) Info() string {
-	// TODO : Specify the Tunnel type
 	return fmt.Sprintf("LISTEN_TUNNEL(%s)", cmd.Name)
 }
 func (cmd *ListenTunnel) TransactionID() string { return cmd.transactionID }

@@ -238,8 +238,10 @@ func (c *Client) acknowledgementReceived(transactionID string, isAck bool) {
 		c.Logger.Warn("Received unexpected acknowledgement. Discarding it.")
 		return
 	}
-	// TODO: Could be blocking if nobody listen to it (shouldn't happen but you know..)
-	waiter <- isAck
+	select {
+	case waiter <- isAck:
+	case <-c.ctx.Done():
+	}
 }
 
 func (c *Client) messageReceived(cmd *command.ReceiveMessage) {
