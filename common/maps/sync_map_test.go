@@ -41,7 +41,7 @@ func TestSyncMap(t *testing.T) {
 	assert.Equal(t, 0, m.Len())
 }
 
-func TestSyncMap_Iterator(t *testing.T) {
+func TestSyncMap_Foreach(t *testing.T) {
 	m := NewSyncMap[int, string]()
 
 	for i := 0; i < 100; i++ {
@@ -54,9 +54,9 @@ func TestSyncMap_Iterator(t *testing.T) {
 	for i := 0; i < concurrentProcesses; i++ {
 		go func() {
 			defer wg.Done()
-			for key, value := range m.Iterator() {
+			m.Foreach(func(key int, value string) {
 				assert.Equal(t, fmt.Sprintf("Value %d", key), value)
-			}
+			})
 		}()
 	}
 	wg.Wait()

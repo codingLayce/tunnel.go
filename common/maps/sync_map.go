@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"iter"
 	"sync"
 )
 
@@ -48,14 +47,10 @@ func (s *SyncMap[Key, Value]) Delete(key Key) {
 	delete(s.internalMap, key)
 }
 
-func (s *SyncMap[Key, Value]) Iterator() iter.Seq2[Key, Value] {
-	return func(yield func(Key, Value) bool) {
-		s.mtx.Lock()
-		defer s.mtx.Unlock()
-		for key, value := range s.internalMap {
-			if !yield(key, value) {
-				return
-			}
-		}
+func (s *SyncMap[Key, Value]) Foreach(f func(key Key, value Value)) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	for key, value := range s.internalMap {
+		f(key, value)
 	}
 }
